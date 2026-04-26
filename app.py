@@ -2,15 +2,23 @@
 cu_nl_charts — Streamlit UI: Member Intelligence — Ask Your Data
 """
 
+import os
 from pathlib import Path
 
 import anthropic
 import pandas as pd
 import streamlit as st
 
-from engine.chart_builder import build_chart
-from engine.executor import safe_execute
-from engine.translator import translate_question
+# Streamlit Cloud does NOT inject secrets as OS environment variables.
+# translator.py and chart_builder.py call anthropic.Anthropic() at module
+# import time, which reads from os.environ — so we must copy the key across
+# before those imports execute.
+if "ANTHROPIC_API_KEY" in st.secrets and "ANTHROPIC_API_KEY" not in os.environ:
+    os.environ["ANTHROPIC_API_KEY"] = st.secrets["ANTHROPIC_API_KEY"]
+
+from engine.chart_builder import build_chart  # noqa: E402
+from engine.executor import safe_execute  # noqa: E402
+from engine.translator import translate_question  # noqa: E402
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config — must be first Streamlit call
