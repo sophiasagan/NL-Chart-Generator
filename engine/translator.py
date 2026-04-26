@@ -3,6 +3,7 @@ Translate plain-English questions into single-line pandas expressions via Claude
 """
 
 import anthropic
+import pandas as pd
 
 _client = anthropic.Anthropic()
 
@@ -45,21 +46,33 @@ A: monthly_balances.groupby("month")["avg_balance"].mean().reset_index()
 """
 
 
-def _schema_description(schema: dict) -> str:
+def _schema_description(schema: dict, dataframes: dict | None = None) -> str:
     lines = []
     for name, cols in schema.items():
-        lines.append(f"  {name}: {', '.join(cols)}")
+        df = dataframes.get(name) if dataframes else None
+        col_descs = []
+        for col in cols:
+            if df is not None and str(df[col].dtype) == "object":
+                uniq = sorted(df[col].dropna().unique().tolist())
+                if 1 < len(uniq) <= 12:
+                    vals = ", ".join(f'"{v}"' for v in uniq)
+                    col_descs.append(f'{col} (values: {vals})')
+                    continue
+            col_descs.append(col)
+        lines.append(f"  {name}: {', '.join(col_descs)}")
     return "\n".join(lines)
 
 
-def translate_question(question: str, schema: dict) -> str:
+def translate_question(question: str, schema: dict, dataframes: dict | None = None) -> str:
     """
     Convert a plain-English question into a single-line pandas expression.
 
     Args:
-        question: Natural-language question about the credit union data.
-        schema:   Mapping of DataFrame name → list of column names.
-                  Example: {"members": ["member_id", "age", "segment"], ...}
+        question:   Natural-language question about the credit union data.
+        schema:     Mapping of DataFrame name → list of column names.
+        dataframes: Optional mapping of DataFrame name → pd.DataFrame.
+                    When provided, categorical column values are included in
+                    the schema description so Claude uses exact filter values.
 
     Returns:
         A single-line pandas expression (str) suitable for safe_execute().
@@ -68,7 +81,7 @@ def translate_question(question: str, schema: dict) -> str:
         anthropic.APIError: on API-level failures.
     """
     system_text = _SYSTEM_PREFIX.format(
-        schema_description=_schema_description(schema)
+        schema_description=_schema_description(schema, dataframes)
     )
 
     response = _client.messages.create(

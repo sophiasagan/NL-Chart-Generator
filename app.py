@@ -183,7 +183,7 @@ def _run(q: str) -> None:
 
     with st.spinner("Translating question…"):
         try:
-            code = translate_question(q, schema)
+            code = translate_question(q, schema, dataframes)
         except Exception as exc:
             st.session_state.last_error = {
                 "question": q, "error": str(exc), "suggestion": None,
@@ -197,6 +197,14 @@ def _run(q: str) -> None:
             suggestion = _rephrase_suggestion(q, str(exc))
             st.session_state.last_error = {
                 "question": q, "error": str(exc), "suggestion": suggestion,
+            }
+            return
+
+        if df.empty:
+            error_msg = f"Query returned no rows.\n\nGenerated expression: `{code}`"
+            suggestion = _rephrase_suggestion(q, error_msg)
+            st.session_state.last_error = {
+                "question": q, "error": error_msg, "suggestion": suggestion,
             }
             return
 
