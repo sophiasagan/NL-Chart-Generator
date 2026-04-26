@@ -43,6 +43,12 @@ A: accounts[accounts["type"] == "checking"].merge(members[["member_id", "segment
 
 Q: Show average monthly balance trend over the last 6 months.
 A: monthly_balances.groupby("month")["avg_balance"].mean().reset_index()
+
+Q: What is the loan-to-share ratio by month?
+A: monthly_balances.groupby("month")["avg_balance"].sum().reset_index(name="total_deposits").assign(total_loans=loans["balance"].sum(), loan_to_share_ratio=lambda d: (loans["balance"].sum() / d["total_deposits"]).round(4))
+
+Q: Show total deposit balances by member segment.
+A: accounts.merge(members[["member_id", "segment"]], on="member_id").groupby("segment")["balance"].sum().reset_index(name="total_balance")
 """
 
 
