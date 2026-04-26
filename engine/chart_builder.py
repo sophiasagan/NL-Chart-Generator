@@ -84,7 +84,6 @@ def _get_chart_spec(df: pd.DataFrame, question: str) -> dict:
         output_config={
             "format": {
                 "type": "json_schema",
-                "name": "chart_spec",
                 "schema": _CHART_SPEC_SCHEMA,
             }
         },
