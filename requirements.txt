@@ -1,0 +1,13 @@
+# Core AI
+anthropic==0.96.0
+
+# UI
+streamlit==1.56.0
+
+# Data
+pandas==2.3.3
+numpy==2.4.4
+pyarrow==23.0.1
+
+# Charts
+plotly==6.6.0
