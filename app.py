@@ -166,8 +166,9 @@ _DEFAULTS: dict = {
     "question_input": "",
     "followup_input": "",
     "auto_run": False,
-    "last_result": None,    # dict{question, code, df, fig}
-    "last_error": None,     # dict{question, error, suggestion}
+    "followup_pending": None,   # set by callback; processed before widgets render
+    "last_result": None,        # dict{question, code, df, fig}
+    "last_error": None,         # dict{question, error, suggestion}
 }
 for _k, _v in _DEFAULTS.items():
     if _k not in st.session_state:
@@ -234,6 +235,14 @@ def _pick_example(q: str) -> None:
     st.session_state.last_error = None
 
 
+def _queue_followup() -> None:
+    """on_click callback for the Go button: stash the follow-up text and clear the input.
+    Callbacks run before the next script execution, so widget-bound keys can be set safely here."""
+    if st.session_state.followup_input.strip():
+        st.session_state.followup_pending = st.session_state.followup_input.strip()
+        st.session_state.followup_input = ""
+
+
 with st.sidebar:
     st.markdown("### 💡 Example Questions")
     st.caption("Click any question to run it instantly.")
@@ -293,7 +302,18 @@ with col_btn:
 # ─────────────────────────────────────────────────────────────────────────────
 # Trigger pipeline
 # ─────────────────────────────────────────────────────────────────────────────
-if st.session_state.auto_run and st.session_state.question_input.strip():
+if st.session_state.followup_pending and st.session_state.last_result:
+    _pending_q = st.session_state.followup_pending
+    _prev = st.session_state.last_result
+    st.session_state.followup_pending = None
+    _context_q = (
+        f'Follow-up to: "{_prev["question"]}"\n'
+        f"Previous pandas expression: {_prev['code']}\n"
+        f"New question: {_pending_q}"
+    )
+    _run(_context_q)
+    st.rerun()
+elif st.session_state.auto_run and st.session_state.question_input.strip():
     st.session_state.auto_run = False
     _run(st.session_state.question_input.strip())
 elif submit and st.session_state.question_input.strip():
@@ -332,23 +352,12 @@ if st.session_state.last_result:
             key="followup_input",
         )
     with col_fu_btn:
-        fu_submit = st.button(
+        st.button(
             "Go",
             key="btn_followup",
             use_container_width=True,
+            on_click=_queue_followup,
         )
-
-    if fu_submit and st.session_state.followup_input.strip():
-        _followup_q = st.session_state.followup_input.strip()
-        _context_q = (
-            f'Follow-up to: "{_res["question"]}"\n'
-            f"Previous pandas expression: {_res['code']}\n"
-            f"New question: {_followup_q}"
-        )
-        st.session_state.question_input = _followup_q
-        st.session_state.followup_input = ""
-        _run(_context_q)
-        st.rerun()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Footer
